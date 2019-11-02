@@ -2,7 +2,7 @@ from keras.applications.inception_v3 import InceptionV3
 from keras.preprocessing import image
 from keras.models import Model, model_from_json
 from keras import layers as KL
-from keras import backend as K
+from keras.optimizers import Adam
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TensorBoard
 import sys
 import matplotlib.pyplot as plt
@@ -10,11 +10,12 @@ import numpy as np
 import datetime
 from data_gen import DataGen
 from eval_callback import EvalCallBack
-from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
 import seaborn as sns
-from sklearn.metrics import confusion_matrix
+import os
 
 sys.path.insert(0, "../")
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 class Inceptionv3WithAttention(object):
@@ -73,9 +74,27 @@ class Inceptionv3WithAttention(object):
         callbacks_list = [EvalCallBack(), EarlyStopping(monitor='val_loss', mode='min', patience=6),
                           TensorBoard(log_dir='logs/'+TIMESTAMP, batch_size=batch_size, update_freq='epoch')]
 
-        self.model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['categorical_accuracy'])
+        self.model.compile(optimizer=Adam(lr=1e-3), loss='categorical_crossentropy', metrics=['categorical_accuracy'])
         self.model.fit_generator(generator=train_gen, steps_per_epoch=train_dataset.get_dataset_size() // batch_size,
                             epochs=epoches, callbacks=callbacks_list)
+
+    def resume_train(self, batch_size, model_json, model_weights, init_epoch, epochs):
+
+        self.load_model(model_json, model_weights)
+        self.model.compile(optimizer=Adam(lr=5e-4), loss='categorical_crossentropy', metrics=["categorical_accuracy"])
+
+        train_dataset = DataGen(self.IMG_SIZE, 5, True)
+        train_gen = train_dataset.generator(batch_size, True)
+
+        model_dir = os.path.dirname(os.path.abspath(model_json))
+        print(model_dir, model_json)
+
+        TIMESTAMP = "{0:%Y-%m-%dT%H-%M-%S}".format(datetime.datetime.now())
+        callbacks_list = [EvalCallBack(), EarlyStopping(monitor='val_loss', mode='min', patience=6),
+                          TensorBoard(log_dir='logs/' + TIMESTAMP, batch_size=batch_size, update_freq='epoch')]
+
+        self.model.fit_generator(generator=train_gen, steps_per_epoch=train_dataset.get_dataset_size() // batch_size,
+                                 initial_epoch=init_epoch, epochs=epochs, callbacks=callbacks_list)
 
     def eval(self, batch_size):
         val_dataset = DataGen(self.IMG_SIZE, 5, False)
@@ -103,17 +122,25 @@ class Inceptionv3WithAttention(object):
             Y_gt = np.concatenate([Y_gt, y_gt])
         acc = accuracy_score(Y_gt, Y_pred)
         print('Eval Accuracy: %2.2f%%' % acc)
-        sns.heatmap(confusion_matrix(Y_gt, Y_pred),
-                    annot=True, fmt="d", cbar=False, cmap=plt.cm.Blues, vmax=Y_pred.shape[0] // 16)
-        plt.show()
+        # sns.heatmap(confusion_matrix(Y_gt, Y_pred),
+        #             annot=True, fmt="d", cbar=False, cmap=plt.cm.Blues, vmax=Y_pred.shape[0] // 16)
+        # plt.show()
+        np_confusion = confusion_matrix(Y_gt, Y_pred)
+        np.save('confusion.npy', np_confusion)
 
 
 if __name__ == '__main__':
 
     model = Inceptionv3WithAttention(5)
+
+    # # train
     # model.build_model(True)
     # model.train(4, 20)
+
     model_json = 'checkpoints/net_arch.json'
     model_weights = 'checkpoints/weights_epoch19.h5'
-    model.load_model(model_json, model_weights)
-    model.eval(16)
+
+    model.resume_train(48, model_json, model_weights, 20, 25)
+    # eval  ok??
+    # model.load_model(model_json, model_weights)
+    # model.eval(16)
