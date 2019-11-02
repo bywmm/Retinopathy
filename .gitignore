@@ -1,0 +1,9 @@
+# Created by .ignore support plugin (hsz.mobi)
+.idea/
+.ipynb_checkpoints/
+__pycache__/
+logs/
+test.py
+
+# Data files and directories common in repo root
+*.h5
