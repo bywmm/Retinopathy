@@ -6,7 +6,8 @@ from skimage.io import imread
 import os
 from glob import glob
 
-base_image_dir = "D:/dataset/tangniaobing/"
+base_image_dir = "/home/wangjunfu/dataset/retinopathy/"
+# base_image_dir = 'D:/dataset/tangniaobing/'
 retina_df = pd.read_csv(os.path.join(base_image_dir, 'trainLabels.csv'))
 retina_df['PatientId'] = retina_df['image'].map(lambda x: x.split('_')[0])
 retina_df['path'] = retina_df['image'].map(lambda x: os.path.join(base_image_dir,
@@ -24,8 +25,8 @@ retina_df = retina_df[retina_df['exists']]
 print(retina_df.head())
 
 # Examine the distribution of eye and severity
-retina_df[['level', 'eye']].hist(figsize=(10, 5))
-plt.show()
+# retina_df[['level', 'eye']].hist(figsize=(10, 5))
+# plt.show()
 
 # Split Data into Training and Validation
 from sklearn.model_selection import train_test_split
@@ -37,9 +38,9 @@ train_ids, valid_ids = train_test_split(rr_df['PatientId'],
                                    random_state = 2018,
                                    stratify = rr_df['level'])
 raw_train_df = retina_df[retina_df['PatientId'].isin(train_ids)]
-valid_df = retina_df[retina_df['PatientId'].isin(valid_ids)]
-print('train', raw_train_df.shape[0], 'validation', valid_df.shape[0])
-raw_train_df[['level', 'eye']].hist()
+raw_valid_df = retina_df[retina_df['PatientId'].isin(valid_ids)]
+print('train', raw_train_df.shape[0], 'validation', raw_valid_df.shape[0])
+# raw_train_df[['level', 'eye']].hist(figsize = (10, 5))
 
 # Balance the distribution in the training set
 train_df = raw_train_df.groupby(['level', 'eye']).apply(lambda x: x.sample(3000, replace = True)
@@ -47,6 +48,9 @@ train_df = raw_train_df.groupby(['level', 'eye']).apply(lambda x: x.sample(3000,
 print('New Data Size:', train_df.shape[0], 'Old Size:', raw_train_df.shape[0])
 # train_df[['level', 'eye']].hist(figsize = (10, 5))
 # plt.show()
+valid_df = raw_valid_df.groupby(['eye']).apply(lambda x: x.sample(500, replace=False)).reset_index(drop = True)
+# valid_df[['level', 'eye']].hist(figsize = (10, 5))
+# plt.show()
 
-valid_df.to_csv('valid.csv')
-train_df.to_csv('train.csv')
+raw_valid_df.to_csv(base_image_dir+'valid.csv')
+train_df.to_csv(base_image_dir+'train.csv')

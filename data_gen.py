@@ -13,14 +13,16 @@ from PIL import Image
 
 class DataGen(object):
 
-    def __init__(self, inres, num_classes, is_train):
+    def __init__(self, inres, num_classes, is_train, mini=True):
         self.inres = inres
         self.num_classes = num_classes
         self.is_train = is_train
+        self.base_image_dir = "/home/wangjunfu/dataset/retinopathy/"
+        # self.base_image_dir = 'D:/dataset/tangniaobing/'
         if self.is_train:
-            self.anno = pd.read_csv('train.csv')
+            self.anno = pd.read_csv(self.base_image_dir+('mini_train.csv' if mini else 'train.csv'))
         else:
-            self.anno = pd.read_csv('valid.csv')
+            self.anno = pd.read_csv(self.base_image_dir+('mini_valid.csv' if mini else 'valid.csv'))
 
     def generator(self, batch_size, is_shuffle=False, flip_flag=False,
                   scale_flag=False, rot_flag=False):
@@ -43,6 +45,7 @@ class DataGen(object):
                 y_batch[_index, :] = to_categorical(_label, self.num_classes)
 
                 if i % batch_size == (batch_size-1):
+
                     yield X_batch, y_batch
                 i = i+1
 
@@ -51,14 +54,21 @@ class DataGen(object):
         label = anno['level']
         image = scipy.misc.imread(image_dir)
         image = np.array(Image.fromarray(image).resize(self.inres))
-        # if flip_flag:
-        #     image = cv2.flip(image, flipCode=1)
-        # # if scale_flag:
-        # #     scale = scale * np.random.uniform(0.8, 1.2)
-        # if rot_flag and random.choice([0, 1]):
-        #     rot = np.random.randint(-1 * 30, 30)
-        #     M = cv2.getRotationMatrix2D((self.inres[0] / 2, self.inres[1] / 2), rot, 1)
-        #     image = cv2.warpAffine(image, M, (self.inres[0], self.inres[1]))
+        if flip_flag:
+            image = cv2.flip(image, flipCode=1)
+        if rot_flag:  # and random.choice([0, 1]):
+            rot = np.random.randint(-1 * 30, 30)
+            M = cv2.getRotationMatrix2D((512 / 2, 512 / 2), rot, 1)
+            image = cv2.warpAffine(image, M, (512, 512))
+
+        # img = tf.placeholder(shape=(512, 512, 3), dtype=float)
+        # img_bri = tf.image.random_brightness(img, max_delta=0.1)
+        # img_sat = tf.image.random_saturation(img_bri, lower=0.75, upper=1.5)
+        # img_hue = tf.image.random_hue(img_sat, max_delta=0.15)
+        # img_con = tf.image.random_contrast(img_hue, lower=0.75, upper=1.5)
+        # with tf.Session() as sess:
+        #     image = sess.run(img_con, feed_dict={img: image})
+
         return image, int(label)
 
     def get_dataset_size(self):

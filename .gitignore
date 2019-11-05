@@ -3,7 +3,8 @@
 .ipynb_checkpoints/
 __pycache__/
 logs/
-test.py
+tmp.py
 
 # Data files and directories common in repo root
 *.h5
+*.npy

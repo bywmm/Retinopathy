@@ -7,8 +7,9 @@ from sklearn.metrics import accuracy_score, classification_report
 
 class EvalCallBack(keras.callbacks.Callback):
 
-    def __init__(self):
+    def __init__(self, out_name):
         self.IMG_SIZE = (512, 512)
+        self.out_name = out_name
 
     def run_eval(self, epoch, batch_size=16):
         val_dataset = DataGen(self.IMG_SIZE, 5, False)
@@ -34,7 +35,7 @@ class EvalCallBack(keras.callbacks.Callback):
         if (epoch+1) % 10 == 0:
             print(classification_report(Y_gt, Y_pred))
 
-        with open('checkpoints/val.txt', 'a+') as xfile:
+        with open('checkpoints/'+self.out_name+'/val.txt', 'a+') as xfile:
             xfile.write('Epoch ' + str(epoch) + ':' + str(acc) + '\n')
 
     def on_epoch_end(self, epoch, logs=None):
@@ -43,12 +44,12 @@ class EvalCallBack(keras.callbacks.Callback):
 
         # save model to json
         if epoch == 0:
-            jsonfile = "checkpoints/net_arch.json"
+            jsonfile = "checkpoints/"+self.out_name+"/net_arch.json"
             with open(jsonfile, 'w') as f:
                 f.write(self.model.to_json())
 
         # save weights
-        modelName = "checkpoints/weights_epoch" + str(epoch) + ".h5"
+        modelName = "checkpoints/"+self.out_name+"/weights_epoch" + str(epoch) + ".h5"
         self.model.save_weights(modelName)
 
         print("Saving model to ", modelName)
